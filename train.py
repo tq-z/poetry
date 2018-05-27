@@ -7,7 +7,7 @@ import time
 import numpy as np
 import pickle
 
-word_dict = preprocess.get_dict()
+word_dict_size = len(preprocess.get_dict())
 
 
 # def poetry_2_num(poetry):
@@ -24,6 +24,7 @@ class Config(object):
     NN_LAYER = 2  # 隐藏层数目
     MAX_GRAD_NORM = 5  # 最大梯度模
     MAX_EPOCH = 30  # 文本循环次数
+    LEARNING_RATE = 0.002
 
 
 class TrainSet(object):
@@ -51,7 +52,7 @@ def network(hiden_size=256, layer=3):
     init_state = cell.zero_state(Config.BATCH_SIZE, tf.float32)
 
     with tf.device("/cpu:0"):
-        embedding = tf.get_variable("embedding", [len(word_dict), hiden_size])
+        embedding = tf.get_variable("embedding", [word_dict_size, hiden_size])
         inputs = tf.nn.embedding_lookup(embedding, input_ids)
         if Config.PROB_KEEP < 1:  # 这是用来随机扔掉一些不参与训练的
             inputs = tf.nn.dropout(inputs, Config.PROB_KEEP)
@@ -59,14 +60,14 @@ def network(hiden_size=256, layer=3):
     outputs, last_state = tf.nn.dynamic_rnn(cell, inputs, initial_state=init_state)
     output = tf.reshape(outputs, [-1, hiden_size])
 
-    softmax_w = tf.get_variable("softmax_w", [hiden_size, len(word_dict)])  # one-hot表示
-    softmax_b = tf.get_variable("softmax_b", [len(word_dict)])
+    softmax_w = tf.get_variable("softmax_w", [hiden_size, word_dict_size])  # one-hot表示
+    softmax_b = tf.get_variable("softmax_b", [word_dict_size])
     logits = tf.matmul(output, softmax_w) + softmax_b
 
     # 计算loss function
     loss = tf_contrib.legacy_seq2seq.sequence_loss_by_example(
         [logits], [tf.reshape(output_targets, [-1])],
-        [tf.ones_like(tf.reshape(output_targets, [-1]), dtype=tf.float32)], len(word_dict))  # 交叉熵
+        [tf.ones_like(tf.reshape(output_targets, [-1]), dtype=tf.float32)], word_dict_size)  # 交叉熵
     cost = tf.reduce_mean(loss)
 
     # 算梯度
@@ -75,20 +76,19 @@ def network(hiden_size=256, layer=3):
     grads, _ = tf.clip_by_global_norm(tf.gradients(cost, tvars), Config.MAX_GRAD_NORM)
     optimizer = tf.train.AdamOptimizer(learning_rate)  #
     train_op = optimizer.apply_gradients(zip(grads, tvars))
-    return cost, last_state, train_op
+    return cost, last_state, train_op, learning_rate
 
 
-def train_nn(cost, last_state, op, name):
+def train_nn(cost, last_state, op, name, learning_rate):
     start_time = time.time()
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())  # 初始化
+        sess.run(tf.assign(learning_rate, Config.LEARNING_RATE))
         saver = tf.train.Saver(tf.global_variables())  # 保存
         for epoch in range(Config.MAX_EPOCH):
             iters = 0
             costs = 0.0
             for index in range(len(x_batches)):  # 训练一个batch
-                a = x_batches[index]
-                b = y_batches[index]
                 train_cost, _, _ = sess.run([cost, last_state, op]
                                             , feed_dict={input_ids: x_batches[index], output_targets: y_batches[index]})
                 iters += len(x_batches[index])
@@ -104,5 +104,7 @@ def train_nn(cost, last_state, op, name):
 
 
 if __name__ == '__main__':
-    cost__, last_state__, train_op__ = network()
-    train_nn(cost__, last_state__, train_op__, 'test')
+    cost__, last_state__, train_op__, lr = network()
+    train_nn(cost__, last_state__, train_op__, 'test', lr)
+
+
