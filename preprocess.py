@@ -10,7 +10,7 @@ import pickle
 
 class Config(object):
     BATCH_SIZE = 77
-    PROB_KEEP = 1.0  # 每此参与训练的节点比例
+    PROB_KEEP = 0.95  # 每此参与训练的节点比例
     HIDEN_SIZE = 256  # 隐藏层神经元个数
     NN_LAYER = 3  # 隐藏层数目
     MAX_GRAD_NORM = 5  # 最大梯度模
@@ -57,7 +57,7 @@ def creat_dict():
         for word in fr:
             for item in word:
                 words.append(item)
-    words = list(set(words)) + ['[', ']']
+    words = list(set(words))
     # print(words)
     _word_dict = dict(zip(words, range(len(words))))
     with open('./data/Dict.txt', 'w', encoding='utf-8') as fw:
@@ -86,6 +86,7 @@ def poterys_2_num_file(file_path, ddict):
             title, content = line.strip().split(':')
             content = '[' + content.replace(' ', '') + ']'
             poterys.append(poetry_2_num(content))
+        poterys = sorted(poterys, key=lambda  i: len(i))
     for index in range(len(poterys)):
         if index % Config.BATCH_SIZE == 0:
             begin_index = index
