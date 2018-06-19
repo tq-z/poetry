@@ -14,7 +14,7 @@ class Config(object):
     HIDEN_SIZE = 256  # 隐藏层神经元个数
     NN_LAYER = 3  # 隐藏层数目
     MAX_GRAD_NORM = 5  # 最大梯度模
-    MAX_EPOCH = 30  # 文本循环次数
+    MAX_EPOCH = 50  # 文本循环次数
 
 
 def preprocess_song():

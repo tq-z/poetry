@@ -23,22 +23,25 @@ class Config(object):
     HIDEN_SIZE = 1  # 隐藏层神经元个数
     NN_LAYER = 2  # 隐藏层数目
     MAX_GRAD_NORM = 5  # 最大梯度模
-    MAX_EPOCH = 30  # 文本循环次数
+    MAX_EPOCH = 50  # 文本循环次数
     LEARNING_RATE = 0.002
 
 
-class TrainSet(object):
-    def __init__(self, batch_size, file_path):
-        self._file_path = file_path
-        self._batch_size = batch_size
-        self._poems = []
-        self._poem_vec = []
+# class TrainSet(object):
+#     def __init__(self, batch_size, file_path):
+#         self._file_path = file_path
+#         self._batch_size = batch_size
+#         self._poems = []
+#         self._poem_vec = []
 
 
 # batch_times = len(poem_vec) // Config.BATCH_SIZE
 with open('./data/Tang.pickle', 'rb') as f:
     x_batches = pickle.load(f)
     y_batches = pickle.load(f)
+# with open('./data/Song.pickle', 'rb') as f:
+#     x_batches = pickle.load(f)
+#     y_batches = pickle.load(f)
 data_batche = zip(x_batches, y_batches)
 
 input_ids = tf.placeholder(tf.int32, [Config.BATCH_SIZE, None])
@@ -51,7 +54,7 @@ def network(hiden_size=256, layer=3):
     cell = tf.nn.rnn_cell.MultiRNNCell([cell] * layer)
     init_state = cell.zero_state(Config.BATCH_SIZE, tf.float32)
 
-    with tf.device("/cpu:0"):
+    with tf.device("/gpu:0"):
         embedding = tf.get_variable("embedding", [word_dict_size, hiden_size])
         inputs = tf.nn.embedding_lookup(embedding, input_ids)
         if Config.PROB_KEEP < 1:  # 这是用来随机扔掉一些不参与训练的
