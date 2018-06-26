@@ -18,7 +18,7 @@ word_dict_size = len(preprocess.get_dict())
 
 
 class Config(object):
-    BATCH_SIZE = 77
+    BATCH_SIZE = 1
     PROB_KEEP = 0.95  # 每此参与训练的节点比例
     HIDEN_SIZE = 1  # 隐藏层神经元个数
     NN_LAYER = 2  # 隐藏层数目
@@ -36,7 +36,7 @@ class Config(object):
 
 
 # batch_times = len(poem_vec) // Config.BATCH_SIZE
-with open('./data/Song.pickle', 'rb') as f:
+with open('./data/Tang.pickle', 'rb') as f:
     x_batches = pickle.load(f)
     y_batches = pickle.load(f)
 # with open('./data/Song.pickle', 'rb') as f:
@@ -81,44 +81,48 @@ def network(hiden_size=128, layer=3):
     optimizer = tf.train.AdamOptimizer(learning_rate)  #
     train_op = optimizer.apply_gradients(zip(grads, tvars))
 
-    return cost, last_state, train_op, learning_rate
+    return cost, last_state, train_op, learning_rate, probs, init_state, cell
 
 
-def train_nn(cost, last_state, op, name, learning_rate):
-    start_time = time.time()
-    with open('./data/Tang.pickle', 'rb') as ff:
-        index = pickle.load(ff)
-        epoch = pickle.load(ff)
+def creat_poem():
+    word_dict = preprocess.get_dict()
+    words = list(word_dict.keys())
+    print(len(words))
+    _, last_state, _, _, probs, init_state, cell = network()
+
+    def to_word(weights):
+        t = np.cumsum(weights)
+        s = np.sum(weights)
+        sample = int(np.searchsorted(t, np.random.rand(1) * s))
+        print(sample)
+        return words[sample]
+
     with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
 
-        sess.run(tf.global_variables_initializer())  # 初始化
-        sess.run(tf.assign(learning_rate, Config.LEARNING_RATE))
-        saver = tf.train.Saver(tf.global_variables())   # 保存
-        saver.restore(sess, './model/' + name + '.mod-50')  # 重新加载50文件
-        if epoch < Config.MAX_EPOCH:
-            epoch += 1
-            iters = 0
-            start_time = time.time()
-            costs = 0.0
-            if index < len(x_batches):  # 训练一个batch
-                index += 1
-                train_cost, _, _ = sess.run([cost, last_state, op]
-                                            , feed_dict={input_ids: x_batches[index], output_targets: y_batches[index]})
-                iters += len(x_batches[index])
-                costs += train_cost
-                if index % 10 == 0:  # 每10个batch输出1次
-                    print('Epoch: %d;batche: %d;loss: %.5f;perplexity: %.3f speed: %.2f' %
-                          (epoch, index, train_cost, np.exp(train_cost / iters),
-                           iters / (time.time() - start_time)))
-                    saver.save(sess, './model/' + name + '.mod', global_step=epoch)  # 保存
-                    with open('./model/now.pickle', 'wb') as fff:
-                        pickle.dump(index, fff)
-                        pickle.dump(epoch, fff)
+        saver = tf.train.Saver(tf.global_variables())
+        saver.restore(sess, './model/test.mod-50')
+
+        state_ = sess.run(cell.zero_state(1, tf.float32))
+
+        poem = '无'
+        x = np.array([list(map(word_dict.get, poem))])
+        [probs_, state_] = sess.run([probs, last_state], feed_dict={input_ids: x, init_state: state_})
+        word = to_word(probs_)
+        # word = words[np.argmax(probs_)]
+        while word != ']':
+            poem += word
+            x = np.zeros((1, 1))
+            x[0, 0] = word_dict[word]
+            [probs_, state_] = sess.run([probs, last_state], feed_dict={input_ids: x, init_state: state_})
+            word = to_word(probs_)
+            # word = words[np.argmax(probs_)]
+        return poem
 
 
 if __name__ == '__main__':
-    cost__, last_state__, train_op__, lr = network()
-    train_nn(cost__, last_state__, train_op__, '256*3', lr)
-
+    # cost__, last_state__, train_op__, lr, _ = network()
+    # train_nn(cost__, last_state__, train_op__, 'test', lr)
+    print(creat_poem())
 
 

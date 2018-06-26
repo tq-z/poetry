@@ -86,7 +86,7 @@ def poterys_2_num_file(file_path, ddict):
             title, content = line.strip().split(':')
             content = '[' + content.replace(' ', '') + ']'
             poterys.append(poetry_2_num(content))
-        poterys = sorted(poterys, key=lambda  i: len(i))
+        poterys = sorted(poterys, key=lambda i: len(i))
     for index in range(len(poterys)):
         if index % Config.BATCH_SIZE == 0:
             begin_index = index
@@ -111,12 +111,13 @@ def poterys_2_num_file(file_path, ddict):
 
 
 if __name__ == '__main__':
-    preprocess_song()
-    creat_dict()
-    word_dict = get_dict()
-    poterys_2_num_file('./data/Tang.txt', word_dict)
-    poterys_2_num_file('./data/Song.txt', word_dict)
+    # preprocess_song()
+    # creat_dict()
+    # word_dict = get_dict()
+    # poterys_2_num_file('./data/Tang.txt', word_dict)
+    # poterys_2_num_file('./data/Song.txt', word_dict)
     # with open('./data/Tang.pickle', 'rb') as f:
     #     xx = pickle.load(f)
     #     yy = pickle.load(f)
-    # print(xx)
+
+    a = get_dict()
